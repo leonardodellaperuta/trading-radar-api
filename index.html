@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>MES Officina</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface-2: #242836; --border: #2e3345;
+    --text: #e8e9ed; --text-muted: #8b8fa3;
+    --green: #22c55e; --green-bg: #0d3320;
+    --yellow: #eab308; --yellow-bg: #332b08;
+    --blue: #3b82f6; --blue-bg: #0c1f3d;
+    --red: #ef4444; --red-bg: #3b1111;
+    --accent: #6366f1;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; overflow-x: hidden; }
+
+  /* === SCHERMATE === */
+  .schermata-centro {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100dvh; padding: 2rem; text-align: center;
+  }
+  .schermata-centro h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  .schermata-centro p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; line-height: 1.5; }
+  .schermata-centro .errore-titolo { color: var(--red); }
+
+  .operatore-grande {
+    font-size: 1.8rem; font-weight: 700; color: var(--accent);
+    margin-bottom: 0.5rem; letter-spacing: -0.02em;
+  }
+  .operatore-istruzioni {
+    color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;
+    margin-bottom: 2rem; max-width: 300px;
+  }
+  .btn-primario {
+    padding: 14px 48px; background: var(--accent); color: white; border: none;
+    border-radius: 12px; font-family: inherit; font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: transform 0.1s;
+  }
+  .btn-primario:active { transform: scale(0.96); }
+  .btn-secondario {
+    margin-top: 1rem; padding: 10px 32px; background: transparent;
+    color: var(--text-muted); border: 1px solid var(--border); border-radius: 10px;
+    font-family: inherit; font-size: 0.85rem; cursor: pointer;
+  }
+
+  /* === SCHERMATA MES === */
+  #schermata-mes { display: none; }
+  .header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 16px 20px; position: sticky; top: 0; z-index: 10;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .logo { font-size: 0.85rem; font-weight: 700; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; }
+  .operatore-badge {
+    font-size: 0.75rem; color: var(--accent); background: var(--surface-2);
+    padding: 4px 10px; border-radius: 6px; border: 1px solid var(--accent);
+    cursor: pointer;
+  }
+  .info-card { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; }
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+  .info-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .info-value { font-size: 0.85rem; font-weight: 600; text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fase-highlight { color: var(--accent); font-size: 1rem; }
+
+  .stato-container { padding: 20px; }
+  .stato-attuale {
+    text-align: center; padding: 20px; border-radius: 14px; margin-bottom: 20px;
+    border: 1.5px solid var(--border); background: var(--surface);
+  }
+  .stato-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stato-valore { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+  .timer { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 8px; letter-spacing: 0.02em; }
+
+  .stato-inattivo .stato-valore { color: var(--text-muted); }
+  .stato-lavoro { border-color: var(--green) !important; background: var(--green-bg) !important; }
+  .stato-lavoro .stato-valore, .stato-lavoro .timer { color: var(--green); }
+  .stato-pausa { border-color: var(--yellow) !important; background: var(--yellow-bg) !important; }
+  .stato-pausa .stato-valore, .stato-pausa .timer { color: var(--yellow); }
+
+  .azioni { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn-azione {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 22px 12px; border-radius: 14px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text); font-family: inherit;
+    cursor: pointer; transition: transform 0.1s; user-select: none;
+  }
+  .btn-azione:active { transform: scale(0.96); }
+  .btn-azione:disabled { opacity: 0.25; pointer-events: none; }
+  .btn-azione .icona {
+    width: 44px; height: 44px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; margin-bottom: 10px; font-size: 1.3rem;
+  }
+  .btn-azione .etichetta { font-size: 0.85rem; font-weight: 600; }
+  .btn-azione .sottotesto { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; }
+
+  .btn-inizio { border-color: var(--green); }
+  .btn-inizio .icona { background: var(--green-bg); color: var(--green); }
+  .btn-pausa { border-color: var(--yellow); }
+  .btn-pausa .icona { background: var(--yellow-bg); color: var(--yellow); }
+  .btn-riprendi { border-color: var(--blue); }
+  .btn-riprendi .icona { background: var(--blue-bg); color: var(--blue); }
+  .btn-fine { border-color: var(--red); }
+  .btn-fine .icona { background: var(--red-bg); color: var(--red); }
+
+  .log-container { padding: 0 20px 100px; margin-top: 24px; }
+  .log-titolo { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .log-entry {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: var(--surface); border-radius: 8px; margin-bottom: 6px;
+    font-size: 0.8rem; animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .log-ora { color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 52px; }
+  .log-testo { flex: 1; }
+
+  .feedback {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    padding: 12px 24px; border-radius: 12px; font-size: 0.85rem; font-weight: 500;
+    z-index: 100; transition: transform 0.3s ease; pointer-events: none;
+  }
+  .feedback.visibile { transform: translateX(-50%) translateY(0); }
+  .feedback.ok { border-color: var(--green); color: var(--green); }
+  .feedback.errore { border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ERRORE: nessun parametro -->
+<div id="schermata-errore" class="schermata-centro" style="display:none;">
+  <h1 class="errore-titolo">QR code non valido</h1>
+  <p>Questa pagina si apre inquadrando un QR code stampato sui cartellini. Riprova con un cartellino valido.</p>
+</div>
+
+<!-- BADGE: operaio ha scansionato il suo QR personale -->
+<div id="schermata-badge" class="schermata-centro" style="display:none;">
+  <h1>MES Officina</h1>
+  <div class="operatore-grande" id="badge-nome-grande"></div>
+  <p class="operatore-istruzioni">Sei loggato. Ora inquadra il QR code del cartellino di produzione per iniziare.</p>
+</div>
+
+<!-- OPERATORE NON LOGGATO: deve prima scansionare il suo badge -->
+<div id="schermata-no-operatore" class="schermata-centro" style="display:none;">
+  <h1>MES Officina</h1>
+  <p>Prima di timbrare devi identificarti.<br>Inquadra il tuo <strong>badge QR personale</strong>.</p>
+  <button class="btn-secondario" onclick="mostraInputManuale()">Non ho il badge, scrivo il nome</button>
+</div>
+
+<!-- INPUT MANUALE nome (fallback) -->
+<div id="schermata-nome-manuale" class="schermata-centro" style="display:none;">
+  <h1>Inserisci il tuo nome</h1>
+  <p>Scrivi nome e cognome per identificarti.</p>
+  <input type="text" id="input-nome" placeholder="Es: Mario Rossi" autocomplete="name" autocapitalize="words"
+    style="width:100%;max-width:320px;padding:14px 18px;background:var(--surface);border:1.5px solid var(--border);
+    border-radius:12px;color:var(--text);font-family:inherit;font-size:1.1rem;text-align:center;outline:none;">
+  <button class="btn-primario" style="margin-top:1.5rem;" onclick="confermaNomeManuale()">Conferma</button>
+</div>
+
+<!-- SCHERMATA MES PRINCIPALE -->
+<div id="schermata-mes">
+  <div class="header">
+    <div class="header-top">
+      <span class="logo">MES Officina</span>
+      <span class="operatore-badge" id="badge-operatore" onclick="cambiaOperatore()"></span>
+    </div>
+    <div class="info-card">
+      <div class="info-row">
+        <span class="info-label">Commessa</span>
+        <span class="info-value" id="info-commessa">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Codice</span>
+        <span class="info-value" id="info-codice">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Fase</span>
+        <span class="info-value fase-highlight" id="info-fase">-</span>
+      </div>
+    </div>
+  </div>
+  <div class="stato-container">
+    <div class="stato-attuale stato-inattivo" id="stato-box">
+      <div class="stato-label">Stato attuale</div>
+      <div class="stato-valore" id="stato-testo">In attesa</div>
+      <div class="timer" id="timer">00:00:00</div>
+    </div>
+    <div class="azioni">
+      <button class="btn-azione btn-inizio" id="btn-inizio" onclick="azione('INIZIO FASE')">
+        <div class="icona">&#9654;</div>
+        <div class="etichetta">Inizio fase</div>
+        <div class="sottotesto">Avvia lavorazione</div>
+      </button>
+      <button class="btn-azione btn-pausa" id="btn-pausa" onclick="azione('INIZIO PAUSA')" disabled>
+        <div class="icona">&#9646;&#9646;</div>
+        <div class="etichetta">Pausa</div>
+        <div class="sottotesto">Interrompi</div>
+      </button>
+      <button class="btn-azione btn-riprendi" id="btn-riprendi" onclick="azione('FINE PAUSA')" disabled>
+        <div class="icona">&#9654;</div>
+        <div class="etichetta">Riprendi</div>
+        <div class="sottotesto">Fine pausa</div>
+      </button>
+      <button class="btn-azione btn-fine" id="btn-fine" onclick="azione('FINE FASE')" disabled>
+        <div class="icona">&#9632;</div>
+        <div class="etichetta">Fine fase</div>
+        <div class="sottotesto">Completa</div>
+      </button>
+    </div>
+  </div>
+  <div class="log-container">
+    <div class="log-titolo">Registro attivita'</div>
+    <div id="log-lista"></div>
+  </div>
+</div>
+
+<div class="feedback" id="feedback"></div>
+
+<script>
+// =============================================================
+// CONFIGURAZIONE
+// =============================================================
+var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxP7hIEqvCOBLPKLEi27RiBOXZ9mEeZHe7gaMhMHGfjMowPP48H_MVFPCxsUKKxb_Q/exec";
+
+// Variabili globali
+var commessa = "", codice = "", fase = "", operatore = "";
+var statoCorrente = "inattivo";
+var timerInterval = null, timerSecondi = 0;
+
+// =============================================================
+// AVVIO: leggi parametri URL
+// =============================================================
+// Due tipi di QR:
+//   Badge operatore:   ?operatore=Mario+Rossi
+//   Cartellino lavoro: ?id=COMMESSA-CODICE-FASE
+// =============================================================
+(function init() {
+  var params = new URLSearchParams(window.location.search);
+
+  // --- CASO 1: QR BADGE OPERATORE ---
+  var opParam = params.get("operatore");
+  if (opParam) {
+    operatore = decodeURIComponent(opParam).trim();
+    // Salva in sessionStorage (dura finche' il browser resta aperto)
+    sessionStorage.setItem("mes_operatore", operatore);
+    // Mostra conferma
+    nascondiTutti();
+    document.getElementById("schermata-badge").style.display = "flex";
+    document.getElementById("badge-nome-grande").textContent = operatore;
+    return;
+  }
+
+  // --- CASO 2: QR CARTELLINO LAVORO ---
+  var idParam = params.get("id");
+  if (!idParam) {
+    nascondiTutti();
+    document.getElementById("schermata-errore").style.display = "flex";
+    return;
+  }
+
+  // Decodifica ID: COMMESSA-CODICE-FASE
+  var parti = idParam.split("-");
+  if (parti.length < 3) {
+    commessa = parti[0] || "";
+    codice = parti[0] || "";
+    fase = parti.slice(1).join("-") || "";
+  } else {
+    commessa = parti[0] || "";
+    codice = parti[1] || "";
+    fase = parti.slice(2).join("-") || "";
+  }
+
+  // Controlla se l'operatore e' gia' loggato (sessionStorage)
+  var opSalvato = sessionStorage.getItem("mes_operatore");
+  if (opSalvato) {
+    operatore = opSalvato;
+    mostraMES();
+  } else {
+    // Nessun operatore: chiedi di scansionare badge
+    nascondiTutti();
+    document.getElementById("schermata-no-operatore").style.display = "flex";
+  }
+})();
+
+function nascondiTutti() {
+  document.getElementById("schermata-errore").style.display = "none";
+  document.getElementById("schermata-badge").style.display = "none";
+  document.getElementById("schermata-no-operatore").style.display = "none";
+  document.getElementById("schermata-nome-manuale").style.display = "none";
+  document.getElementById("schermata-mes").style.display = "none";
+}
+
+// === FALLBACK: input nome manuale ===
+function mostraInputManuale() {
+  nascondiTutti();
+  document.getElementById("schermata-nome-manuale").style.display = "flex";
+}
+
+function confermaNomeManuale() {
+  var nome = document.getElementById("input-nome").value.trim();
+  if (!nome) return;
+  operatore = nome;
+  sessionStorage.setItem("mes_operatore", operatore);
+  mostraMES();
+}
+
+document.getElementById("input-nome").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") confermaNomeManuale();
+});
+
+// === CAMBIO OPERATORE (clic sul badge in alto) ===
+function cambiaOperatore() {
+  if (confirm("Vuoi cambiare operatore? Inquadra un nuovo badge QR oppure scrivi il nome.")) {
+    sessionStorage.removeItem("mes_operatore");
+    operatore = "";
+    nascondiTutti();
+    document.getElementById("schermata-no-operatore").style.display = "flex";
+  }
+}
+
+// === MOSTRA SCHERMATA MES ===
+function mostraMES() {
+  nascondiTutti();
+  document.getElementById("schermata-mes").style.display = "block";
+  document.getElementById("badge-operatore").textContent = operatore;
+  document.getElementById("info-commessa").textContent = commessa;
+  document.getElementById("info-codice").textContent = codice;
+  document.getElementById("info-fase").textContent = fase;
+  aggiornaBottoni();
+}
+
+// === AZIONE PRINCIPALE ===
+function azione(tipo) {
+  if (tipo === "INIZIO FASE") { statoCorrente = "lavoro"; avviaTimer(); }
+  else if (tipo === "INIZIO PAUSA") { statoCorrente = "pausa"; fermaTimer(); }
+  else if (tipo === "FINE PAUSA") { statoCorrente = "lavoro"; avviaTimer(); }
+  else if (tipo === "FINE FASE") { statoCorrente = "inattivo"; fermaTimer(); }
+  aggiornaStato(tipo);
+  aggiornaBottoni();
+  aggiungiLog(tipo);
+  inviaAGoogle(tipo);
+  if (navigator.vibrate) navigator.vibrate(50);
+}
+
+function aggiornaStato(tipo) {
+  var box = document.getElementById("stato-box");
+  var testo = document.getElementById("stato-testo");
+  box.className = "stato-attuale";
+  if (statoCorrente === "lavoro") { box.classList.add("stato-lavoro"); testo.textContent = "In lavorazione"; }
+  else if (statoCorrente === "pausa") { box.classList.add("stato-pausa"); testo.textContent = "In pausa"; }
+  else { box.classList.add("stato-inattivo"); testo.textContent = tipo === "FINE FASE" ? "Fase completata!" : "In attesa"; }
+}
+
+function aggiornaBottoni() {
+  var btnI = document.getElementById("btn-inizio");
+  var btnP = document.getElementById("btn-pausa");
+  var btnR = document.getElementById("btn-riprendi");
+  var btnF = document.getElementById("btn-fine");
+  if (statoCorrente === "inattivo") { btnI.disabled=false; btnP.disabled=true; btnR.disabled=true; btnF.disabled=true; }
+  else if (statoCorrente === "lavoro") { btnI.disabled=true; btnP.disabled=false; btnR.disabled=true; btnF.disabled=false; }
+  else if (statoCorrente === "pausa") { btnI.disabled=true; btnP.disabled=true; btnR.disabled=false; btnF.disabled=false; }
+}
+
+// === TIMER ===
+function avviaTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(function() {
+    timerSecondi++;
+    document.getElementById("timer").textContent = formattaTempo(timerSecondi);
+  }, 1000);
+}
+function fermaTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+function formattaTempo(sec) {
+  return pad(Math.floor(sec/3600)) + ":" + pad(Math.floor((sec%3600)/60)) + ":" + pad(sec%60);
+}
+function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+// === LOG ===
+function aggiungiLog(tipo) {
+  var lista = document.getElementById("log-lista");
+  var ora = new Date();
+  var oraStr = pad(ora.getHours()) + ":" + pad(ora.getMinutes()) + ":" + pad(ora.getSeconds());
+  var colore = tipo === "INIZIO FASE" ? "var(--green)" : tipo === "INIZIO PAUSA" ? "var(--yellow)" : tipo === "FINE PAUSA" ? "var(--blue)" : "var(--red)";
+  var entry = document.createElement("div");
+  entry.className = "log-entry";
+  entry.innerHTML = '<div class="log-dot" style="background:'+colore+'"></div><span class="log-ora">'+oraStr+'</span><span class="log-testo">'+tipo+'</span>';
+  lista.insertBefore(entry, lista.firstChild);
+}
+
+// === INVIO A GOOGLE ===
+function inviaAGoogle(tipo) {
+  var dati = {
+    commessa: commessa, codice: codice, fase: fase,
+    azione: tipo, operatore: operatore, note: ""
+  };
+  fetch(GOOGLE_SCRIPT_URL, {
+    method: "POST", mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dati)
+  })
+  .then(function() { mostraFeedback("Registrato: " + tipo, "ok"); })
+  .catch(function() { mostraFeedback("Errore di rete - riprova", "errore"); });
+}
+
+function mostraFeedback(msg, tipo) {
+  var el = document.getElementById("feedback");
+  el.textContent = msg;
+  el.className = "feedback visibile " + tipo;
+  setTimeout(function() { el.className = "feedback"; }, 2500);
+}
+</script>
+</body>
+</html>
